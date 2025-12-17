@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="GATE%20&%20CRASHER.png" alt="GATE & CRASHER Logo" width="150" height="150" style="border-radius: 50%; object-fit: cover;">
+  <img src="DOSRL%20logo.png" alt="GATE & CRASHER Logo" width="150" height="150" style="border-radius: 50%; object-fit: cover;">
 </div>
 
 # GATE & CRASHER - DoS Simulator & Rate Limiter
