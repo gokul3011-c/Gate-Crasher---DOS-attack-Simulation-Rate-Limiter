@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="DOSRL%20logo.png" alt="GATE & CRASHER Logo" width="250" height="250" style="border-radius: 50%; object-fit: cover; border: 3px solid #3498db; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+  <img src="DOSRL%20logo.png" alt="GATE & CRASHER Logo" width="300" height="300" style="border-radius: 50%; object-fit: cover; border: 4px solid #3498db; box-shadow: 0 6px 12px rgba(0,0,0,0.3); background: white; padding: 5px;">
 </div>
 
 # GATE & CRASHER - DoS Simulator & Rate Limiter
@@ -47,13 +47,80 @@ GATE & CRASHER provides a controlled environment to study DoS attack vectors, ra
 
 ## Quick Start
 
-```bash
-# 1. Install dependencies
-pip install flask requests psutil numpy scikit-learn
+Before launching the application, ensure you have Python 3.8+ installed on your system.
 
-# 2. Launch application
-python dos_simulator.py
-```
+### Installation Steps
+
+1. **Install required dependencies**:
+   ```bash
+   pip install flask requests psutil numpy scikit-learn
+   ```
+
+2. **Optional enhancements** (for full functionality):
+   - For basic operation: `pip install flask requests psutil`
+   - For system monitoring: `pip install psutil`
+   - For ML features: `pip install numpy scikit-learn`
+
+3. **Launch the application**:
+   ```bash
+   python dos_simulator.py
+   ```
+
+### Initial Setup
+
+Upon first launch, you'll see the GATE CRASHER landing page with:
+- Large circular DOSRL logo
+- Project title and description
+- Two action buttons: "PROJECT INFO" and "START APPLICATION"
+
+Click "START APPLICATION" to proceed to the main interface.
+
+### Detailed Usage Guide
+
+#### 1. Starting the Application
+- Run `python dos_simulator.py` to launch the application
+- The application will open with a landing page featuring the GATE CRASHER logo
+- Click "START APPLICATION" to proceed to the main interface
+
+#### 2. Main Interface Overview
+The main interface consists of several sections:
+- **Server Control Panel**: Manage the target server (localhost:5000)
+- **Attacker Control Panel**: Configure and launch attack simulations
+- **Parameters Section**: Adjust rate limiting thresholds
+- **Statistics Dashboard**: View real-time attack and defense metrics
+- **Logging Area**: Monitor events and system status
+
+#### 3. Setting Up the Target Server
+- Click "Start Server" in the Server Control Panel
+- The server will begin listening on localhost:5000
+- Status indicators will show "Online" when ready
+
+#### 4. Configuring Attack Parameters
+- Select an attack mode from the dropdown (Flood, Burst, Randomized, Slowloris, Botnet, UDP Flood, TCP SYN-like)
+- Adjust Requests Per Second (RPS) using the spinbox (1-200 range)
+- For UDP/TCP attacks, additional parameters can be configured in the code
+
+#### 5. Executing Attacks
+- Click "Start Attack" to begin the simulation
+- Monitor real-time statistics in the dashboard
+- View blocking actions and system resource usage
+- Stop the attack at any time with "Stop Attack"
+
+#### 6. Rate Limiting Configuration
+- Adjust "Max Requests" to set threshold (default: 5 requests)
+- Modify time window in the application code if needed (default: 10 seconds)
+- Violation thresholds for blacklisting can be tuned
+
+#### 7. Monitoring and Analysis
+- Real-time counters show requests sent, successful responses, and blocked attempts
+- System resource usage (CPU/RAM) displayed when psutil is available
+- Active blacklist entries shown with expiration timers
+- Machine Learning anomaly detection status (when enabled)
+
+#### 8. Exporting Results
+- Click "Generate Report" to create a CSV summary
+- View detailed logs with "View Logs" (opens attack_log.csv)
+- Reports and logs contain timestamps, event types, and performance metrics
 
 ### Usage Workflow
 1. Start Server → localhost:5000 (rate limited endpoint)
@@ -62,6 +129,8 @@ python dos_simulator.py
 4. Analyze Results → Generate CSV reports
 
 ## Technical Architecture
+
+The GATE CRASHER application follows a modular architecture with three primary components:
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -74,6 +143,28 @@ python dos_simulator.py
               │CSV Log │ │ML Models│ │System Monitor│
               └────────┘ └──────────┘ └─────────────┘
 ```
+
+### Component Overview
+
+1. **Tkinter GUI**: 
+   - Provides the user interface for controlling attacks and monitoring defenses
+   - Built with Python's standard GUI toolkit for cross-platform compatibility
+   - Features dark/light theme switching capability
+
+2. **Flask Server**: 
+   - Implements the target server running on localhost:5000
+   - Integrates rate limiting and blacklisting mechanisms
+   - Handles incoming HTTP requests and applies defensive measures
+
+3. **Attack Simulator**: 
+   - Generates various types of DoS attacks (HTTP, UDP, TCP)
+   - Supports multiple attack vectors and configurable intensity
+   - Manages concurrent attack threads for realistic simulation
+
+4. **Supporting Modules**:
+   - **CSV Log**: Records all events and metrics for analysis
+   - **ML Models**: Provides anomaly detection using Isolation Forest and Logistic Regression
+   - **System Monitor**: Tracks CPU and memory usage during simulations
 
 ### Rate Limiting Algorithm
 
@@ -107,10 +198,20 @@ Sliding Window Implementation:
 ```
 ├── dos_simulator.py       # Core application (1100+ lines)
 ├── attack_log.csv         # Runtime logs
+├── simulation_report.csv   # Summary reports
 ├── DOSRL logo.png         # Branding
 ├── Project_info.html      # Documentation
 └── README.md              # This file
 ```
+
+### File Descriptions
+
+- **dos_simulator.py**: The main application containing all logic for the GUI, server, attack simulation, and ML components
+- **attack_log.csv**: Detailed chronological log of all events during simulations (automatically created on first run)
+- **simulation_report.csv**: Summary statistics and metrics exported from the application
+- **DOSRL logo.png**: Official project logo used in the application interface and documentation
+- **Project_info.html**: Comprehensive project documentation with team information and technical details
+- **README.md**: This file containing setup instructions, usage guides, and technical information
 
 ## Performance Metrics
 
