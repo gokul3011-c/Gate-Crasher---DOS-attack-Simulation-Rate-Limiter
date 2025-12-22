@@ -1,182 +1,139 @@
 <div align="center">
-  <img src="DOSRL%20logo.png" alt="GATE & CRASHER Logo" width="150" height="150" style="border-radius: 50%; object-fit: cover;">
+  <img src="DOSRL%20logo.png" alt="GATE & CRASHER Logo" width="250" height="250" style="border-radius: 50%; object-fit: cover; border: 3px solid #3498db; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
 </div>
 
 # GATE & CRASHER - DoS Simulator & Rate Limiter
 
-A comprehensive cybersecurity simulation tool designed for educational purposes to demonstrate Denial-of-Service (DoS) attacks and rate limiting defenses.
+**Educational Cybersecurity Simulation Platform**
 
-## Purpose
+A professional-grade desktop application for simulating Denial-of-Service (DoS) attacks and rate limiting defense mechanisms. Designed for cybersecurity education and research.
 
-This application simulates DoS attacks against a local web server while demonstrating effective rate limiting and auto-blacklisting defense mechanisms. It's designed for cybersecurity education, allowing users to understand:
+## Project Overview
 
-- How DoS attacks work and their impact on servers
-- How rate limiting can protect against abusive traffic
-- How auto-blacklisting defends against persistent attackers
-- The importance of system resource monitoring during attacks
+GATE & CRASHER provides a controlled environment to study DoS attack vectors, rate limiting algorithms, auto-blacklisting, and machine learning-based anomaly detection. All operations run locally on localhost with no external network access.
 
-## Features
+## Key Features
 
-- **Security Mechanisms**:
-  - **Rate Limiting**: Limits requests to 5 per 10-second window
-  - **Auto-Blacklisting**: Blocks IPs after 3 rate limit violations for 60 seconds
-  - **Defense Chain Visualization**: Real-time visualization of firewall → rate limiter → application flow
+### Security Defenses
+- **Sliding Window Rate Limiting**: Configurable limits (default: 5 req/10s)
+- **Auto-Blacklisting**: IP blocking after 3 violations (configurable duration)
+- **Defense Chain Visualization**: Real-time firewall → limiter → application status
+- **ML Anomaly Detection**: Isolation Forest + Logistic Regression models
 
-- **Monitoring & Analytics**:
-  - **System Resource Monitoring**: Real-time CPU and RAM usage tracking
-  - **Live Statistics**: Counts of requests sent, successful responses (200), and blocked requests (429)
-  - **Detailed Logging**: Comprehensive Excel logging of all attack events
-  - **Request Log**: Real-time display of all HTTP responses
+### Monitoring & Analytics
+- **Live Statistics**: Requests sent, 200 OK, 429/403 blocked ratios
+- **System Resource Tracking**: CPU/RAM utilization via psutil
+- **Blacklist Management**: Active IP table with expiration timers
+- **CSV Reporting**: Comprehensive attack simulation logs
 
-- **Controls**:
-  - **Server Control**: Start/Stop the Flask web server
-  - **Attack Control**: Start/Stop simulated DoS attacks
-  - **Refresh**: Reset statistics while preserving log data
-  - **View Logs**: Open detailed Excel logs for analysis
+### Attack Simulation
+- **HTTP Flood** (1-200 RPS configurable)
+- **Burst Attacks** (high-intensity spikes)
+- **Randomized Attacks** (random timing patterns)
+- **Slowloris** (partial header connections)
+- **Botnet Simulation** (IP spoofing via headers)
+- **UDP Flood** (64-2048B payloads)
+- **TCP SYN-like** (connection exhaustion)
 
-## Getting Started
+## System Requirements
 
-- **Prerequisites**:
+| Component | Requirement |
+|-----------|-------------|
+| **Python** | 3.8+ |
+| **Core Dependencies** | `flask requests psutil` |
+| **ML Features** | `numpy scikit-learn` |
+| **OS** | Windows/Linux/macOS |
+| **Ports** | 5000(HTTP), 5001(UDP), 5002(TCP) |
 
-  - **Python 3.6+**
-  - **Required Python packages**:
-    ```bash
-    pip install flask requests psutil pandas openpyxl pillow
-    ```
+## Quick Start
 
-- **Installation**:
+```bash
+# 1. Install dependencies
+pip install flask requests psutil numpy scikit-learn
 
-  1. **Clone or download this repository**
-  2. **Install required packages**: `pip install flask requests psutil pandas openpyxl pillow`
-  3. **Run the application**: `python dos_simulator.py`
+# 2. Launch application
+python dos_simulator.py
+```
 
-- **Usage**:
-
-  1. **Start the Application** - Launch `dos_simulator.py`
-  2. **Start the Server** - Click "Start Server" in the Server Control panel
-  3. **Initiate Attack** - Click "Start Attack" in the Attacker Control panel
-  4. **Monitor Effects** - Observe system resources, live statistics, and request logs
-  5. **Analyze Results** - Click "View Log Details" to examine Excel logs
-
-## How It Works
-
-- **DoS Attack Simulation**:
-
-  - **Sends continuous HTTP GET requests** - Targets the local server
-  - **Exceeds rate limits** - Goes beyond 5 requests per 10 seconds
-  - **Triggers defenses** - Activates rate limiting (429 responses) and auto-blacklisting (403 responses)
-
-- **Defense Mechanisms**:
-  1. **Rate Limiter**: Implements sliding window algorithm to limit requests
-  2. **Auto-Blacklist**: Blocks IPs after 3 rate limit violations for 60 seconds
-  3. **System Monitoring**: Tracks CPU/RAM usage to show attack impact
-
-- **Data Logging**:
-
-  - **All events logged** - Saved to `attack_log.xlsx`
-  - **Comprehensive details** - Includes timestamps, event types, details, and durations
-  - **Persistent storage** - Data remains across application sessions
-
-## File Structure
-
-- **dos_simulator.py** - Main application
-- **attack_log.xlsx** - Attack data logs
-- **GATE & CRASHER.png** - Header image
-- **DOSRL logo.png** - Logo image
-- **Project_info.html** - Project documentation
-- **README.md** - This file
+### Usage Workflow
+1. Start Server → localhost:5000 (rate limited endpoint)
+2. Configure Parameters → Adjust limits/RPS/modes
+3. Execute Attack → Monitor defense activation
+4. Analyze Results → Generate CSV reports
 
 ## Technical Architecture
 
-- **Components**:
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Tkinter GUI   │◄──►│   Flask Server   │◄──►│ Attack Simulator│
+└─────────┬───────┘    └──────┬──────────┘    └──────┬──────────┘
+          │                   │                       │
+          └─────────┬─────────┼───────────────┬───────┘
+                    │         │               │
+              ┌─────▼──┐ ┌────▼────┐ ┌──────▼─────┐
+              │CSV Log │ │ML Models│ │System Monitor│
+              └────────┘ └──────────┘ └─────────────┘
+```
 
-  - **Flask Server** - Handles incoming requests with rate limiting
-  - **Tkinter GUI** - Provides user interface for controls and monitoring
-  - **Attack Simulator** - Generates HTTP requests to simulate DoS
-  - **System Monitor** - Tracks CPU and RAM usage via psutil
-  - **Data Logger** - Records events to Excel via pandas
+### Rate Limiting Algorithm
 
-- **Rate Limiting Algorithm**:
+Sliding Window Implementation:
+├── Request timestamp deque (maxlen=window_duration)
+├── Prune expired timestamps (>window_duration)
+├── Block if len(deque) >= max_requests
+└── Track violations → auto-blacklist after threshold
 
-  Implements a sliding window approach:
+### Attack Mode Specifications
 
-  1. **Maintains request queue** - Keeps track of request timestamps
-  2. **Removes expired requests** - Clears requests outside the 10-second window
-  3. **Blocks excess requests** - Prevents requests when count reaches 5 within window
-  4. **Tracks violations** - Counts violations for blacklisting
+| Mode      | Protocol | Characteristics  | Parameters             |
+| --------- | -------- | ---------------- | ---------------------- |
+| Flood     | HTTP     | Constant RPS     | 1-200 req/s            |
+| Burst     | HTTP     | Spike patterns   | RPS multiplier         |
+| Randomized| HTTP     | Random timing    | Variable intervals     |
+| Slowloris | HTTP     | Slow headers     | Connection timeout     |
+| Botnet    | HTTP     | IP rotation      | X-Forwarded-For spoof  |
+| UDP Flood | UDP:5001 | Packet bursts    | 64-2048B, 10-1000 pkts |
+| TCP SYN   | TCP:5002 | Conn. exhaustion | Port-specific          |
 
-- **Auto-Blacklisting**:
+## Educational Applications
 
-  1. **Counts violations** - Tracks rate limit violations per IP
-  2. **Applies blacklist** - Blocks IP for 60 seconds after 3 violations
-  3. **Manages expiration** - Automatically removes expired blacklist entries
+- **Cybersecurity Training**: DoS defense implementation
+- **Penetration Testing**: Attack vector familiarization
+- **Research**: ML-based intrusion detection
+- **Academic**: Network security coursework
 
-## UI Layout
+## File Structure
 
-- **Header**:
+```
+├── dos_simulator.py       # Core application (1100+ lines)
+├── attack_log.csv         # Runtime logs
+├── DOSRL logo.png         # Branding
+├── Project_info.html      # Documentation
+└── README.md              # This file
+```
 
-  - **Application branding** - Custom header image
+## Performance Metrics
 
-- **Control Panels**:
-
-  - **Server Control** - Manage server status and view blacklist status
-  - **Attacker Control** - Control attack simulation and view attacker status
-
-- **Monitoring Sections**:
-
-  - **System Resource Monitoring** - CPU and RAM usage indicators
-  - **Live Statistics** - Request counts and refresh button
-  - **Defense Chain** - Visual representation of security layers
-
-- **Main Content**:
-
-  - **Request Log** - Real-time display of HTTP responses
-  - **View Log Details** - Button to open Excel logs
-
-## Educational Value
-
-- **Learning Outcomes**:
-
-  - **Understand DoS mechanics** - Learn how attacks work and impact servers
-  - **Learn rate limiting** - Master implementation techniques for traffic control
-  - **Explore auto-blacklisting** - Study strategies for blocking persistent attackers
-  - **Analyze resource consumption** - Examine system impact during attacks
-  - **Study defense-in-depth** - Investigate layered security approaches
-
-- **Safe Usage Guidelines**:
-
-  - **Educational use only** - For learning and research purposes
-  - **Controlled environments** - Use only in safe test environments
-  - **No production systems** - Never use against live production systems
-  - **Respect policies** - Follow all network usage policies
-
-## Contributing
-
-This is an educational tool. Contributions are welcome for:
-
-- **Bug fixes** - Resolve issues and improve stability
-- **Feature enhancements** - Add new capabilities and functionality
-- **Documentation improvements** - Enhance guides and explanations
-- **UI/UX refinements** - Improve user interface and experience
-
-## License
-
-This project is for educational purposes. See individual libraries for their respective licenses.
-
-## Acknowledgments
-
-- Built with Python, Flask, Tkinter, and various open-source libraries
-- Designed for cybersecurity education and research
-- Thanks to all contributors and the open-source community
+- Max Concurrent Attacks: 200+ RPS (system dependent)
+- ML Prediction Latency: <1s real-time scoring
+- Blacklist Capacity: 1000+ active entries
+- Log Throughput: 10K+ events/hour
 
 ## Troubleshooting
 
-- **Common Issues**:
-  - **Missing Dependencies**: Install all required packages
-  - **Port Conflicts**: Ensure port 5000 is available
-  - **Excel File Issues**: Close Excel when viewing logs
-  - **GUI Display Problems**: Check Python/Tkinter installation
+| Issue                | Solution                               |
+| -------------------- | -------------------------------------- |
+| Port 5000 busy       | netstat -ano \| findstr :5000 (Windows) |
+| ML disabled          | pip install scikit-learn numpy         |
+| No system stats      | pip install psutil                     |
+| CSV permission error | Run as administrator                   |
 
-- **Support**:
+## Contribution Guidelines
 
-  For issues or questions, please check the code comments or create an issue in the repository.
+1. Fork repository
+2. Create feature branch (git checkout -b feature/DoS-visualization)
+3. Commit changes (git commit -m 'Add visualization enhancements')
+4. Push to branch (git push origin feature/DoS-visualization)
+5. Open Pull Request
+
+Focus Areas: ML improvements, new attack vectors, UI enhancements

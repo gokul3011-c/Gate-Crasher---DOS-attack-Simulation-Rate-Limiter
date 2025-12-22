@@ -3,127 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Information</title>
+    <title>Project Information - Gate & Crasher</title>
     <style>
         body {
-    font-family: 'Times New Roman', serif;
-    background-color: #f0f4f8;
-    color: #333;
-    margin: 0;
-    padding: 40px 20px;
-}
+            font-family: 'Times New Roman', serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+        }
 
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease-in-out;
-}
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease-in-out;
+        }
 
-.container:hover {
-    transform: scale(1.02);
-}
+        .container:hover {
+            transform: translateY(-2px);
+        }
 
-.header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-}
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #a8dadc;
+        }
 
-h1 {
-    font-size: 2.5em;
-    font-weight: 600;
-    color: #1d3557;
-}
+        h1 {
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #1d3557;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
 
-h2 {
-    margin-top: 30px;
-    margin-bottom: 15px;
-    color: #457b9d;
-    border-bottom: 2px solid #a8dadc;
-    padding-bottom: 5px;
-}
+        h2 {
+            margin-top: 35px;
+            margin-bottom: 20px;
+            color: #457b9d;
+            font-size: 1.6em;
+            border-bottom: 3px solid #a8dadc;
+            padding-bottom: 8px;
+        }
 
-p {
-    line-height: 1.8;
-    color: #555;
-    font-size: 1.1em;
-}
+        p {
+            line-height: 1.8;
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 25px;
+        }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
 
-th, td {
-    text-align: left;
-    padding: 15px;
-    border-bottom: 1px solid #dee2e6;
-}
+        th, td {
+            text-align: left;
+            padding: 18px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
 
-th {
-    background-color: #f1f5f9;
-    color: #1d3557;
-    font-weight: 600;
-    width: 35%;
-}
+        th {
+            background: linear-gradient(135deg, #457b9d, #1d3557);
+            color: white;
+            font-weight: 600;
+            width: 35%;
+            font-size: 1em;
+        }
 
-td {
-    background-color: #f9fbfd;
-    color: #333;
-    font-weight: 400;
-}
+        td {
+            background-color: #f9fbfd;
+            color: #333;
+            font-weight: 500;
+        }
 
-.status-completed {
-    display: inline-block;
-    background-color: #2a9d8f;
-    color: #fff;
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 0.9em;
-}
+        tr:hover td {
+            background-color: #e3f2fd;
+            transition: background-color 0.2s;
+        }
 
-strong {
-    color: #1d3557;
-}
+        .status-completed {
+            display: inline-block;
+            background: linear-gradient(135deg, #2a9d8f, #1e7a6a);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.95em;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(42, 157, 143, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-@media (max-width: 768px) {
-    .container {
-        padding: 20px;
-    }
+        strong {
+            color: #1d3557;
+            font-weight: 600;
+        }
 
-    h1 {
-        font-size: 2em;
-    }
+        .team-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #a8dadc, #457b9d);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
 
-    th, td {
-        padding: 10px;
-    }
-}
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px 20px;
+                margin: 10px;
+            }
 
+            h1 {
+                font-size: 2.2em;
+            }
+
+            th, td {
+                padding: 12px 10px;
+                font-size: 0.95em;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Project Information</h1>
+            <h1>Gate & Crasher</h1>
+            <span class="team-badge">Cyber Security Team</span>
         </div>
-        <p>This project was developed by <strong>Gokul Sowri Galla, C. Kuldeep Reddy, A. Harshith Ram, Muthyam Akshay Kumar, S. Gnaneshwar</strong> as part of a <strong>Cyber Security Advanced Internship</strong>. This project is a cybersecurity simulation tool designed to visualize and test how a server's rate-limiting defense protects against high-volume Denial of Service (DoS) attacks in real-time.</strong></p>
+        
+        <p>
+            This project was developed by <strong>Gokul Sowri Galla, C. Kuldeep Reddy, A. Harshith Ram, Muthyam Akshay Kumar, S. Gnaneshwar</strong> 
+            as part of a <strong>Cyber Security Advanced Internship</strong> at <strong>Supraja Technologies</strong>. 
+            This project is a cybersecurity simulation tool designed to visualize and test how a server's rate-limiting defense protects against high-volume Denial of Service (DoS) attacks in real-time.
+        </p>
         
         <div class="project-details">
-            <h2>Project Details</h2>
+            <h2>📋 Project Details</h2>
             <table>
                 <tr>
                     <th>Project Name</th>
-                    <td>Gate&Crasher - DOS Simulation & Rate Limiter</td>
+                    <td><strong>Gate & Crasher - DoS Simulation & Rate Limiter</strong></td>
                 </tr>
                 <tr>
                     <th>Project Description</th>
-                    <td>Gate & Crasher is a real-time cybersecurity simulation tool designed to visualize and test the effectiveness of server-side rate limiting defenses against high-intensity Denial of Service (DoS) attacks.</td>
+                    <td>Real-time cybersecurity simulation tool designed to visualize and test the effectiveness of server-side rate limiting defenses against high-intensity Denial of Service (DoS) attacks with ML-powered anomaly detection.</td>
                 </tr>
                 <tr>
                     <th>Project Start Date</th>
@@ -135,13 +173,13 @@ strong {
                 </tr>
                 <tr>
                     <th>Project Status</th>
-                    <td><span class="status-completed">Completed</span></td>
+                    <td><span class="status-completed">✅ Completed</span></td>
                 </tr>
             </table>
         </div>
 
         <div class="developer-details">
-            <h2>Developer Details</h2>
+            <h2>👥 Development Team</h2>
             <table>
                 <tr>
                     <th>Name</th>
@@ -149,44 +187,42 @@ strong {
                     <th>Email</th>
                 </tr>
                 <tr>
-                    <td>C. Kuldeep Reddy</th>
-                        <td>ST#IS#7517</td>
+                    <td><strong>C. Kuldeep Reddy</strong></td>
+                    <td>ST#IS#7517</td>
                     <td>kuldeepreddy963@gmail.com</td>
                 </tr>
                 <tr>
-                    <td>Gokul Sowri Galla</th>
-                        <td>ST#IS#7521</td>
+                    <td><strong>Gokul Sowri Galla</strong></td>
+                    <td>ST#IS#7521</td>
                     <td>gokulgalla2005@gmail.com</td>
                 </tr>
                 <tr>
-                    <td>A. Harshith Ram</th>
-                        <td>ST#IS#7536</td>
+                    <td><strong>A. Harshith Ram</strong></td>
+                    <td>ST#IS#7536</td>
                     <td>aharshithram4444@gmail.com</td>
                 </tr>
                 <tr>
-                    <td>Muthyam Akshay Kumar</th>
-                        <td>ST#IS#7547</td>
+                    <td><strong>Muthyam Akshay Kumar</strong></td>
+                    <td>ST#IS#7547</td>
                     <td>akshaymuthyamkumar@gmail.com</td>
                 </tr>
-
                 <tr>
-                    <td>S. Gnaneshwar</th>
-                        <td>ST#IS#7552</td>
+                    <td><strong>S. Gnaneshwar</strong></td>
+                    <td>ST#IS#7552</td>
                     <td>gnaneshwar010@gmail.com</td>
                 </tr>
-                </tr>
-                
             </table>
         </div>
+        
         <div class="company-details">
-            <h2>Company Details</h2>
+            <h2>🏢 Company Details</h2>
             <table>
                 <tr>
                     <th>Company Name</th>
-                    <td>Supraja Technologies</td>
+                    <td><strong>Supraja Technologies</strong></td>
                 </tr>
                 <tr>
-                    <th>Contact Mail</th>
+                    <th>Contact Email</th>
                     <td>contact@suprajatechnologies.com</td>
                 </tr>
             </table>

@@ -1,20 +1,6 @@
 import tkinter as tk
-from tkinter import scrolledtext
-import threading
-import time
-import requests
-from flask import Flask, request
-from collections import deque
-import csv
-import datetime
-
-# Excel handling
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-    print("pandas not available. Using CSV logging only.")
+from tkinter import ttk, scrolledtext, messagebox as msg
+import threading, time, requests, csv, datetime, random, socket, math, os, platform, subprocess
 
 # Image handling
 try:
@@ -22,494 +8,599 @@ try:
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
-    print("PIL not available. Logo display disabled.")
+from flask import Flask, request
+from collections import deque, Counter
 
-# Try to import psutil for system monitoring
+# ----- Optional dependencies -----
 try:
     import psutil
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
 
+try:
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+    from sklearn.linear_model import LogisticRegression
+    SKLEARN_AVAILABLE = True
+except Exception:
+    SKLEARN_AVAILABLE = False
+
+# Charts disabled in this integrated version to keep things simple
+MATPLOTLIB_AVAILABLE = False
+
+
 class DoSSimulatorApp:
-    def __init__(self, root):
+    # ============================================================
+    # Phase 1 – Bootstrap & landing
+    # ============================================================
+    def __init__(self, root: tk.Tk):
         self.root = root
+        self.theme = "light"
+        self.root.title("DOS Simulator & Rate Limiter (Extended)")
         self.show_landing_page()
-    
+
     def show_landing_page(self):
-        """Display the landing page before the main application"""
-        self.root.title("GATE & CRASHER - Welcome")
-        self.root.geometry("1000x700")
-        self.root.configure(bg='#2c3e50')
-        
-        # Clear any existing widgets
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        
-        # Landing page frame
-        landing_frame = tk.Frame(self.root, bg='#2c3e50', padx=50, pady=30)
-        landing_frame.pack(expand=True)
-        
-        # Try to load and display logo in circular frame
-        self.logo_photo = None
+        self.root.geometry("1200x800")  # Increased window size
+        for w in self.root.winfo_children():
+            w.destroy()
+
+        self.root.configure(bg="#2c3e50")
+        frame = tk.Frame(self.root, bg="#2c3e50", padx=60, pady=40)
+        frame.pack(expand=True, fill=tk.BOTH)
+
+        # Add DOSRL logo in circular frame at the top center if PIL is available
         if PIL_AVAILABLE:
             try:
-                # Load the logo image
-                logo_image = Image.open("DOSRL logo.png")
-                
-                # Resize to appropriate size
-                logo_size = 150
-                logo_image = logo_image.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
-                
-                # Create circular mask
-                mask = Image.new('L', (logo_size, logo_size), 0)
-                draw = ImageDraw.Draw(mask)
-                draw.ellipse((0, 0, logo_size, logo_size), fill=255)
-                
-                # Apply circular mask
-                output = Image.new('RGBA', (logo_size, logo_size), (0, 0, 0, 0))
-                output.paste(logo_image, mask=mask)
-                
-                self.logo_photo = ImageTk.PhotoImage(output)
-                
-                # Display logo
-                logo_label = tk.Label(landing_frame, image=self.logo_photo, bg='#2c3e50')
-                logo_label.pack(pady=(0, 20))
+                # Load and resize the logo
+                logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "DOSRL logo.png")
+                if os.path.exists(logo_path):
+                    # Open image with PIL
+                    pil_image = Image.open(logo_path)
+                    
+                    # Resize to a larger size while maintaining aspect ratio
+                    pil_image.thumbnail((350, 350))  # Even larger size
+                    
+                    # Create circular mask
+                    mask = Image.new('L', pil_image.size, 0)
+                    draw = ImageDraw.Draw(mask)
+                    draw.ellipse((0, 0) + pil_image.size, fill=255)
+                    
+                    # Apply circular mask
+                    output = Image.new('RGBA', pil_image.size, (0, 0, 0, 0))
+                    output.paste(pil_image, mask=mask)
+                    
+                    # Convert to PhotoImage for Tkinter
+                    logo_image = ImageTk.PhotoImage(output)
+                    
+                    # Display logo
+                    logo_label = tk.Label(frame, image=logo_image, bg="#2c3e50")
+                    logo_label.image = logo_image  # Keep a reference
+                    logo_label.pack(pady=(0, 40))  # Increased padding
             except Exception as e:
-                print(f"Failed to load logo: {e}")
-                # Continue without logo if it fails to load
-        
-        # Title
-        title_label = tk.Label(
-            landing_frame,
-            text="GATE & CRASHER",
-            font=("Arial", 48, "bold"),
-            fg="white",
-            bg='#2c3e50'
-        )
-        title_label.pack(pady=(0, 30))
-        
-        # Tagline
-        tagline_label = tk.Label(
-            landing_frame,
-            text="DOS Attacker and Rate Limiter",
-            font=("Arial", 24),
-            fg="#ecf0f1",
-            bg='#2c3e50'
-        )
-        tagline_label.pack(pady=(0, 50))
-        
-        # Description
-        desc_text = """A comprehensive cybersecurity simulation tool designed for educational purposes.
+                print(f"Error loading logo: {e}")
+        else:
+            # Fallback text if PIL is not available
+            tk.Label(
+                frame,
+                text="🛡️",
+                font=("Arial", 96),  # Even larger fallback icon
+                fg="white",
+                bg="#2c3e50",
+            ).pack(pady=(0, 40))  # Increased padding
 
-Features:
-• DoS Simulation with realistic attack patterns
-• Advanced Rate Limiting mechanisms
-• Auto-Blacklist defense systems
-• Real-time System Resource Monitoring
-• Detailed Attack Logging in Excel format"""
-        
-        desc_label = tk.Label(
-            landing_frame,
-            text=desc_text,
-            font=("Arial", 16),
+        tk.Label(
+            frame,
+            text="GATE CRASHER",
+            font=("Arial", 64, "bold"),  # Increased font size
+            fg="white",
+            bg="#2c3e50",
+        ).pack(pady=(0, 30))  # Increased padding
+
+        tk.Label(
+            frame,
+            text="DOS Attacker and Rate Limiter",
+            font=("Arial", 32),  # Increased font size
+            fg="#ecf0f1",
+            bg="#2c3e50",
+        ).pack(pady=(0, 40))  # Increased padding
+
+        tk.Label(
+            frame,
+            text=(
+                "Educational simulator for local research\n"
+                "- Rate limiting & blacklist\n"
+                "- Multi‑vector attacks\n"
+                "- CSV logs & reports\n"
+                "- ML anomaly detection\n"
+                "- Live statistics & adaptive limits"
+            ),
+            font=("Arial", 20),  # Increased font size
             fg="#bdc3c7",
-            bg='#2c3e50',
-            justify=tk.LEFT
-        )
-        desc_label.pack(pady=(0, 30))
+            bg="#6945C4",
+            justify=tk.LEFT,
+        ).pack(pady=(0, 40))  # Increased padding
+
+        btns = tk.Frame(frame, bg="#2c3e50")
+        btns.pack(pady=20)  # Increased padding
+
         
-        # Buttons Frame
-        buttons_frame = tk.Frame(landing_frame, bg='#2c3e50')
-        buttons_frame.pack(pady=(0, 40))
-        
-        # Project Info Button
-        info_btn = tk.Button(
-            buttons_frame,
+        tk.Button(
+            btns,
             text="PROJECT INFO",
             command=self.show_project_info,
             bg="#9b59b6",
             fg="white",
-            font=("Arial", 14, "bold"),
-            padx=25,
-            pady=12,
-            relief=tk.RAISED,
-            bd=3
-        )
-        info_btn.pack(side=tk.LEFT, padx=(0, 20))
-        
-        # Start Button
-        start_btn = tk.Button(
-            buttons_frame,
+            font=("Arial", 20, "bold"),  # Increased font size
+            padx=40,  # Increased padding
+            pady=20,  # Increased padding
+        ).pack(side=tk.LEFT, padx=20)  # Increased spacing
+
+        tk.Button(
+            btns,
             text="START APPLICATION",
             command=self.start_main_app,
             bg="#3498db",
             fg="white",
-            font=("Arial", 14, "bold"),
-            padx=25,
-            pady=12,
-            relief=tk.RAISED,
-            bd=3
-        )
-        start_btn.pack(side=tk.LEFT)
-        
-        # Footer
-        footer_label = tk.Label(
-            landing_frame,
-            text="Cybersecurity Education Tool • For Research and Learning Purposes Only",
-            font=("Arial", 12),
-            fg="#95a5a6",
-            bg='#2c3e50'
-        )
-        footer_label.pack(side=tk.BOTTOM, pady=(40, 0))
-    
+            font=("Arial", 20, "bold"),  # Increased font size
+            padx=40,  # Increased padding
+            pady=20,  # Increased padding
+        ).pack(side=tk.LEFT, padx=20)  # Increased spacing
+
+
     def show_project_info(self):
-        """Open the project info HTML page in the default web browser"""
         try:
             import webbrowser
-            import os
-            
-            # Get the absolute path to the HTML file
-            html_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Project_info.html')
-            
-            if os.path.exists(html_file):
-                # Open in the default web browser
-                webbrowser.open(f'file://{html_file}')
+            htmlfile = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "Project_info.html"
+            )
+            if os.path.exists(htmlfile):
+                webbrowser.open(f"file:///{htmlfile}")
             else:
-                # Fallback message if file doesn't exist
-                print("Project info file not found.")
+                self.log_gui("Projectinfo.html not found in app directory.")
         except Exception as e:
-            print(f"Failed to open project info: {e}")
-    
+            self.log_gui(f"Failed to open project info: {e}")
+
+    # ============================================================
+    # Phase 2 – Main app state + GUI + Flask + ML init
+    # ============================================================
     def start_main_app(self):
-        """Initialize and display the main application"""
-        # Clear landing page
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        
-        # Set up main application
-        self.root.title("DOS Simulator & Rate Limiter")
-        self.root.geometry("1200x1200")
-        self.root.configure(bg='white')
-        
-        # Initialize variables
-        self.server_thread = None
-        self.attack_thread = None
+        for w in self.root.winfo_children():
+            w.destroy()
+
+        self.root.title("DOS Simulator & Rate Limiter (Extended)")
+        self.root.geometry("1280x960")
+        self.apply_theme(self.theme)
+
+        # ---- core state ----
         self.server_running = False
         self.attack_running = False
         self.request_count = 0
         self.success_count = 0
         self.blocked_count = 0
-        self.attack_start_time = None
-        self.attack_end_time = None
-        
-        # Rate limiter variables
+
+        # rate limiter / blacklist
         self.request_window = deque()
+        self.window_duration = 10
         self.max_requests = 5
-        self.window_duration = 10  # seconds
-        
-        # Blacklist variables
-        self.blacklist = {}  # ip -> expiration time
-        self.rate_limit_violations = {}  # ip -> count
-        
-        # Setup GUI
+        self.blacklist_duration = 60
+        self.rate_limit_violations = {}
+        self.blacklist = {}
+
+        # attack parameters
+        self.attack_rps = 20
+        self.udp_payload_size = 256
+        self.udp_count = 100
+
+        # metrics for ML
+        self.metrics_window = deque(maxlen=2000)
+        self.ip_counts_window = deque(maxlen=2000)
+        self.status_counts_window = deque(maxlen=2000)
+        self.feature_window_seconds = 10
+        self.ml_enabled = SKLEARN_AVAILABLE
+        self.ml_pred_history = deque(maxlen=300)
+
+        self.state_lock = threading.Lock()
+
+        # logging
+        self.init_logging()
+
+        # GUI
         self.setup_gui()
-        
-        # Setup Flask app
+
+        # Flask app
         self.flask_app = Flask(__name__)
         self.setup_flask_routes()
-        
-        # Initialize logging (Excel if available)
-        self.init_logging()
-    
-    def create_text_header(self, parent):
-        """Create text-based header as fallback"""
-        # Center the title and tagline
-        center_frame = tk.Frame(parent, bg='#4a90e2')
-        center_frame.pack(expand=True)
-        
-        # Title
-        header_label = tk.Label(
-            center_frame, 
-            text="GATE & CRASHER",
-            font=("Arial", 24, "bold"),
-            fg="white",
-            bg='#4a90e2'
-        )
-        header_label.pack()
-        
-        # Tagline
-        tagline_label = tk.Label(
-            center_frame,
-            text="DOS Attacker and Rate Limiter",
-            font=("Arial", 14),
-            fg="white",
-            bg='#4a90e2'
-        )
-        tagline_label.pack(pady=(5, 0))
-    
-    def setup_gui(self):
-        # Header with background image - extended to fill entire width
-        header_frame = tk.Frame(self.root, bg='white', padx=0, pady=0)
-        header_frame.pack(fill=tk.X, padx=0, pady=0)
-        
-        # Set header image if PIL is available
-        self.header_photo = None
-        if PIL_AVAILABLE:
+
+        # ML initialization + loop
+        if self.ml_enabled:
             try:
-                # Load the header image
-                header_image = Image.open("GATE & CRASHER.png")
-                
-                # Get the original image dimensions
-                img_width, img_height = header_image.size
-                
-                # Calculate aspect ratio
-                aspect_ratio = img_width / img_height
-                
-                # Dimensions to extend to both ends
-                desired_width = 1500  # Extended width to fill both sides completely
-                desired_height = int(desired_width / aspect_ratio)  # Original height
-                
-                # Resize to fill the header
-                header_image = header_image.resize((desired_width, desired_height), Image.Resampling.LANCZOS)
-                
-                self.header_photo = ImageTk.PhotoImage(header_image)
-                
-                # Create a label with the header image that stretches to fill completely
-                header_label = tk.Label(header_frame, image=self.header_photo, bg='white', bd=0)
-                header_label.pack(fill=tk.BOTH, expand=True)
-                
+                self.init_ml()
+                self.start_ml_loop()
             except Exception as e:
-                print(f"Failed to load header image: {e}")
-                # Fallback to text if image fails to load
-                self.create_text_header(header_frame)
-        else:
-            # Fallback to text if PIL is not available
-            self.create_text_header(header_frame)
-        
-        # Combined Control Section (Server and Attacker in one row)
-        control_frame = tk.Frame(self.root, bg='white')
-        control_frame.pack(fill=tk.X, padx=15, pady=10)
-        
-        # Server Control Box
-        server_frame = tk.LabelFrame(control_frame, text="Server Control", padx=15, pady=15, bg='#f0f0f0')
-        server_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        server_inner_frame = tk.Frame(server_frame, bg='#f0f0f0')
-        server_inner_frame.pack(fill=tk.BOTH, expand=True)
-        
+                self.ml_enabled = False
+                self.ml_status_var.set("Model Disabled")
+                self.log_gui(f"ML init error: {e}")
+
+        # background tasks
+        if PSUTIL_AVAILABLE:
+            threading.Thread(target=self.monitor_health, daemon=True).start()
+
+    # ============================================================
+    # Theme & GUI helpers
+    # ============================================================
+    def bgcolor(self):
+        return "white" if self.theme == "light" else "#1e272e"
+
+    def panelbg(self):
+        return "#f0f0f0" if self.theme == "light" else "#2f3640"
+
+    def panelfg(self):
+        return "black" if self.theme == "light" else "#ecf0f1"
+
+    def btnbg(self):
+        return "#3498db" if self.theme == "light" else "#718093"
+
+    def btnfg(self):
+        return "white"
+
+    def mutedfg(self):
+        return "gray" if self.theme == "light" else "#95a5a6"
+
+    def apply_theme(self, theme):
+        self.theme = theme
+        self.root.configure(bg=self.bgcolor())
+
+    def toggle_theme(self):
+        self.apply_theme("dark" if self.theme == "light" else "light")
+        self.start_main_app()
+
+    def setup_gui(self):
+        # header
+        header = tk.Frame(self.root, bg=self.bgcolor())
+        header.pack(fill=tk.X, padx=10, pady=6)
+        tk.Button(
+            header,
+            text="Switch to Dark" if self.theme == "light" else "Switch to Light",
+            command=self.toggle_theme,
+            bg=self.btnbg(),
+            fg=self.btnfg(),
+            font=("Arial", 10, "bold"),
+            padx=10,
+        ).pack(side=tk.RIGHT)
+
+        # ---- Top controls (server + attacker) ----
+        top = tk.Frame(self.root, bg=self.bgcolor())
+        top.pack(fill=tk.X, padx=10, pady=6)
+
+        # Server control
+        srv = tk.LabelFrame(
+            top,
+            text="Server control",
+            padx=15,
+            pady=15,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        srv.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         self.server_status_var = tk.StringVar(value="Server Status: Offline")
         self.server_status_label = tk.Label(
-            server_inner_frame,
+            srv,
             textvariable=self.server_status_var,
             font=("Arial", 14, "bold"),
             fg="red",
-            bg='#f0f0f0'
+            bg=self.panelbg(),
         )
-        self.server_status_label.pack(side=tk.LEFT, padx=(0, 20))
-        
+        self.server_status_label.pack(side=tk.LEFT)
+
         self.start_server_btn = tk.Button(
-            server_inner_frame,
+            srv,
             text="Start Server",
-            command=self.toggle_server,
             bg="#27ae60",
             fg="white",
             font=("Arial", 12, "bold"),
-            padx=20,
-            pady=8,
-            relief=tk.RAISED,
-            bd=3
+            command=self.toggle_server,
         )
-        self.start_server_btn.pack(side=tk.LEFT)
-        
-        # Blacklist Status
+        self.start_server_btn.pack(side=tk.LEFT, padx=20)
+
         self.blacklist_status_var = tk.StringVar(value="Blacklist Status: Inactive")
         self.blacklist_status_label = tk.Label(
-            server_inner_frame,
+            srv,
             textvariable=self.blacklist_status_var,
             font=("Arial", 12, "bold"),
-            fg="gray",
-            bg='#f0f0f0'
+            fg=self.mutedfg(),
+            bg=self.panelbg(),
         )
-        self.blacklist_status_label.pack(side=tk.RIGHT, padx=(20, 0))
-        
-        # Attacker Control Box
-        attacker_frame = tk.LabelFrame(control_frame, text="Attacker Control", padx=15, pady=15, bg='#f0f0f0')
-        attacker_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        attacker_inner_frame = tk.Frame(attacker_frame, bg='#f0f0f0')
-        attacker_inner_frame.pack(fill=tk.BOTH, expand=True)
-        
+        self.blacklist_status_label.pack(side=tk.RIGHT)
+
+        # Attacker control
+        atk = tk.LabelFrame(
+            top,
+            text="Attacker control",
+            padx=15,
+            pady=15,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        atk.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         self.attacker_status_var = tk.StringVar(value="Attacker Status: Inactive")
         self.attacker_status_label = tk.Label(
-            attacker_inner_frame,
+            atk,
             textvariable=self.attacker_status_var,
             font=("Arial", 14, "bold"),
-            fg="gray",
-            bg='#f0f0f0'
+            fg=self.mutedfg(),
+            bg=self.panelbg(),
         )
-        self.attacker_status_label.pack(side=tk.LEFT, padx=(0, 20))
-        
-        buttons_frame = tk.Frame(attacker_inner_frame, bg='#f0f0f0')
-        buttons_frame.pack(side=tk.LEFT)
-        
+        self.attacker_status_label.pack(side=tk.LEFT)
+
         self.start_attack_btn = tk.Button(
-            buttons_frame,
+            atk,
             text="Start Attack",
             command=self.toggle_attack,
             bg="#e74c3c",
             fg="white",
             font=("Arial", 12, "bold"),
-            padx=20,
-            pady=8,
-            relief=tk.RAISED,
-            bd=3
         )
-        self.start_attack_btn.pack(side=tk.LEFT, padx=(0, 15))
-        
+        self.start_attack_btn.pack(side=tk.LEFT, padx=20)
+
         self.stop_attack_btn = tk.Button(
-            buttons_frame,
+            atk,
             text="Stop Attack",
             command=self.stop_attack,
             bg="#95a5a6",
             fg="white",
             font=("Arial", 12, "bold"),
-            padx=20,
-            pady=8,
-            relief=tk.RAISED,
-            bd=3,
-            state=tk.DISABLED
+            state=tk.DISABLED,
         )
         self.stop_attack_btn.pack(side=tk.LEFT)
-        
-        # Combined Monitoring and Statistics Section (side by side)
-        monitoring_stats_frame = tk.Frame(self.root, bg='white')
-        monitoring_stats_frame.pack(fill=tk.X, padx=15, pady=8)
-        
-        # System Resource Monitoring Box
-        if PSUTIL_AVAILABLE:
-            health_frame = tk.LabelFrame(monitoring_stats_frame, text="System Resource Monitoring", padx=15, pady=15, bg='#f0f0f0')
-            health_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-            
-            # CPU and RAM Indicators in Same Row
-            metrics_frame = tk.Frame(health_frame, bg='#f0f0f0')
-            metrics_frame.pack(side=tk.TOP, pady=5)
-            
-            # CPU Indicator
-            cpu_frame = tk.Frame(metrics_frame, bg='#f0f0f0')
-            cpu_frame.pack(side=tk.LEFT, padx=(0, 20))
-            
-            cpu_title = tk.Label(cpu_frame, text="CPU USAGE:", font=("Arial", 11, "bold"), bg='#f0f0f0', fg='#2c3e50')
-            cpu_title.pack(side=tk.LEFT)
-            
-            self.cpu_label = tk.Label(cpu_frame, text="0%", font=("Arial", 14, "bold"), bg='#f0f0f0', fg='#e74c3c')
-            self.cpu_label.pack(side=tk.LEFT, padx=(5, 0))
-            
-            # RAM Indicator
-            ram_frame = tk.Frame(metrics_frame, bg='#f0f0f0')
-            ram_frame.pack(side=tk.LEFT)
-            
-            ram_title = tk.Label(ram_frame, text="RAM USAGE:", font=("Arial", 11, "bold"), bg='#f0f0f0', fg='#2c3e50')
-            ram_title.pack(side=tk.LEFT)
-            
-            self.ram_label = tk.Label(ram_frame, text="0%", font=("Arial", 14, "bold"), bg='#f0f0f0', fg='#3498db')
-            self.ram_label.pack(side=tk.LEFT, padx=(5, 0))
-        
-        # Live Stats Box
-        stats_frame = tk.LabelFrame(monitoring_stats_frame, text="Live Statistics", padx=15, pady=20, bg='#f0f0f0')
-        stats_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        # Increase font size for better visibility
+
+        self.attack_mode_var = tk.StringVar(value="Flood")
+        tk.OptionMenu(
+            atk,
+            self.attack_mode_var,
+            "Flood",
+            "Burst",
+            "Randomized",
+            "Slowloris",
+            "Botnet",
+            "UDP Flood",
+            "TCP SYN-like",
+        ).pack(side=tk.LEFT, padx=20)
+
+        tk.Label(atk, text="RPS", bg=self.panelbg(), fg=self.panelfg()).pack(side=tk.LEFT)
+        self.attack_rps_var = tk.IntVar(value=self.attack_rps)
+        tk.Spinbox(
+            atk, from_=1, to=200, textvariable=self.attack_rps_var, width=5
+        ).pack(side=tk.LEFT)
+
+        # ---- Parameters frame ----
+        params = tk.LabelFrame(
+            self.root,
+            text="Parameters",
+            padx=15,
+            pady=15,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        params.pack(fill=tk.X, padx=10, pady=6)
+
+        tk.Label(params, text="Max Requests", bg=self.panelbg(), fg=self.panelfg()).pack(
+            side=tk.LEFT
+        )
+        self.maxreq_var = tk.IntVar(value=self.max_requests)
+        tk.Spinbox(
+            params,
+            from_=1,
+            to=50,
+            textvariable=self.maxreq_var,
+            width=5,
+            command=self.update_params,
+        ).pack(side=tk.LEFT, padx=(5, 20))
+
+        tk.Label(params, text="Window (s)", bg=self.panelbg(), fg=self.panelfg()).pack(
+            side=tk.LEFT
+        )
+        self.window_var = tk.IntVar(value=self.window_duration)
+        tk.Spinbox(
+            params,
+            from_=1,
+            to=120,
+            textvariable=self.window_var,
+            width=5,
+            command=self.update_params,
+        ).pack(side=tk.LEFT, padx=(5, 20))
+
+        tk.Label(params, text="Blacklist (s)", bg=self.panelbg(), fg=self.panelfg()).pack(
+            side=tk.LEFT
+        )
+        self.blacklist_var = tk.IntVar(value=self.blacklist_duration)
+        tk.Spinbox(
+            params,
+            from_=10,
+            to=600,
+            textvariable=self.blacklist_var,
+            width=6,
+            command=self.update_params,
+        ).pack(side=tk.LEFT, padx=(5, 20))
+
+        tk.Label(params, text="UDP payload", bg=self.panelbg(), fg=self.panelfg()).pack(
+            side=tk.LEFT
+        )
+        self.udppayload_var = tk.IntVar(value=self.udp_payload_size)
+        tk.Spinbox(
+            params,
+            from_=64,
+            to=2048,
+            textvariable=self.udppayload_var,
+            width=6,
+            command=self.update_params,
+        ).pack(side=tk.LEFT, padx=(5, 20))
+
+        tk.Label(params, text="UDP count", bg=self.panelbg(), fg=self.panelfg()).pack(
+            side=tk.LEFT
+        )
+        self.udpcount_var = tk.IntVar(value=self.udp_count)
+        tk.Spinbox(
+            params,
+            from_=10,
+            to=1000,
+            textvariable=self.udpcount_var,
+            width=6,
+            command=self.update_params,
+        ).pack(side=tk.LEFT, padx=(5, 20))
+
+        # ---- Live statistics ----
+        stats = tk.LabelFrame(
+            self.root,
+            text="Live statistics",
+            padx=15,
+            pady=20,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        stats.pack(fill=tk.X, padx=10, pady=6)
+
         self.requests_sent_var = tk.StringVar(value="Requests Sent: 0")
         self.successful_var = tk.StringVar(value="Successful (200 OK): 0")
-        self.blocked_var = tk.StringVar(value="Blocked (429): 0")
-        
-        requests_label = tk.Label(stats_frame, textvariable=self.requests_sent_var, bg='#f0f0f0', font=("Arial", 16, "bold"))
-        requests_label.pack(side=tk.LEFT, padx=(0, 30))
-        
-        success_label = tk.Label(stats_frame, textvariable=self.successful_var, bg='#f0f0f0', font=("Arial", 16, "bold"), fg="#27ae60")
-        success_label.pack(side=tk.LEFT, padx=(0, 30))
-        
-        blocked_label = tk.Label(stats_frame, textvariable=self.blocked_var, bg='#f0f0f0', font=("Arial", 16, "bold"), fg="#e74c3c")
-        blocked_label.pack(side=tk.LEFT, padx=(0, 20))
-        
-        # Refresh Button (larger and more prominent)
-        refresh_btn = tk.Button(
-            stats_frame,
-            text="Refresh",
-            command=self.refresh_stats,
-            bg="#3498db",
-            fg="white",
-            font=("Arial", 12, "bold"),
-            padx=20,
-            pady=8,
-            relief=tk.RAISED,
-            bd=3
+        self.blocked_var = tk.StringVar(value="Blocked (429/403): 0")
+
+        tk.Label(
+            stats,
+            textvariable=self.requests_sent_var,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+            font=("Arial", 16, "bold"),
+        ).pack(side=tk.LEFT, padx=20)
+
+        tk.Label(
+            stats,
+            textvariable=self.successful_var,
+            bg=self.panelbg(),
+            fg="green",
+            font=("Arial", 16, "bold"),
+        ).pack(side=tk.LEFT, padx=20)
+
+        tk.Label(
+            stats,
+            textvariable=self.blocked_var,
+            bg=self.panelbg(),
+            fg="red",
+            font=("Arial", 16, "bold"),
+        ).pack(side=tk.LEFT, padx=20)
+
+        tk.Button(
+            stats,
+            text="Generate Report",
+            command=self.generate_report,
+            bg=self.btnbg(),
+            fg=self.btnfg(),
+            font=("Arial", 11, "bold"),
+        ).pack(side=tk.RIGHT, padx=10)
+
+        # ---- ML frame ----
+        mlframe = tk.LabelFrame(
+            self.root,
+            text="Anomaly detection",
+            padx=15,
+            pady=15,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
         )
-        refresh_btn.pack(side=tk.RIGHT)
-        
-        # Defense Chain Visualization
-        defense_frame = tk.LabelFrame(self.root, text="Defense Chain", padx=15, pady=15, bg='#f0f0f0')
-        defense_frame.pack(fill=tk.X, padx=15, pady=8)
-        
-        # Create a frame for the defense chain visualization
-        chain_frame = tk.Frame(defense_frame, bg='#f0f0f0')
-        chain_frame.pack(fill=tk.X, pady=10)
-        
-        # Firewall Component
-        firewall_frame = tk.Frame(chain_frame, bg='#e3f2fd', relief=tk.RAISED, bd=2)
-        firewall_frame.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        
-        firewall_title = tk.Label(firewall_frame, text="FIREWALL", font=("Arial", 10, "bold"), bg='#e3f2fd', fg='#1976d2')
-        firewall_title.pack(pady=(5, 2))
-        
-        firewall_desc = tk.Label(firewall_frame, text="First Line of Defense", font=("Arial", 8), bg='#e3f2fd', fg='#555')
-        firewall_desc.pack(pady=(0, 5))
-        
-        self.firewall_status = tk.Label(firewall_frame, text="ACTIVE", font=("Arial", 9, "bold"), bg='#e3f2fd', fg='green')
-        self.firewall_status.pack(pady=(0, 5))
-        
-        # Arrow
-        arrow1 = tk.Label(chain_frame, text=">", font=("Arial", 16, "bold"), bg='#f0f0f0', fg='#666')
-        arrow1.pack(side=tk.LEFT, padx=5)
-        
-        # Rate Limiter Component
-        limiter_frame = tk.Frame(chain_frame, bg='#f3e5f5', relief=tk.RAISED, bd=2)
-        limiter_frame.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        
-        limiter_title = tk.Label(limiter_frame, text="RATE LIMITER", font=("Arial", 10, "bold"), bg='#f3e5f5', fg='#7b1fa2')
-        limiter_title.pack(pady=(5, 2))
-        
-        limiter_desc = tk.Label(limiter_frame, text="Traffic Control", font=("Arial", 8), bg='#f3e5f5', fg='#555')
-        limiter_desc.pack(pady=(0, 5))
-        
-        self.limiter_status = tk.Label(limiter_frame, text="5 req/10 sec", font=("Arial", 9, "bold"), bg='#f3e5f5', fg='#7b1fa2')
-        self.limiter_status.pack(pady=(0, 5))
-        
-        # Arrow
-        arrow2 = tk.Label(chain_frame, text=">", font=("Arial", 16, "bold"), bg='#f0f0f0', fg='#666')
-        arrow2.pack(side=tk.LEFT, padx=5)
-        
-        # Application Component
-        app_frame = tk.Frame(chain_frame, bg='#e8f5e9', relief=tk.RAISED, bd=2)
-        app_frame.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        
-        app_title = tk.Label(app_frame, text="APPLICATION", font=("Arial", 10, "bold"), bg='#e8f5e9', fg='#388e3c')
-        app_title.pack(pady=(5, 2))
-        
-        app_desc = tk.Label(app_frame, text="Core Service", font=("Arial", 8), bg='#e8f5e9', fg='#555')
-        app_desc.pack(pady=(0, 5))
-        
-        self.app_status = tk.Label(app_frame, text="PROTECTED", font=("Arial", 9, "bold"), bg='#e8f5e9', fg='#388e3c')
-        self.app_status.pack(pady=(0, 5))
-        
-        # Request Log Section (maximized height and padding)
-        log_frame = tk.LabelFrame(self.root, text="Request Log", padx=25, pady=25, bg='#f0f0f0')
-        log_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=20)
-        
-        # View Log Details Button (moved to top to eliminate empty space)
-        view_log_btn = tk.Button(
-            log_frame,
+        mlframe.pack(fill=tk.X, padx=10, pady=6)
+
+        self.ml_status_var = tk.StringVar(
+            value="Model Ready | Prediction: NA" if self.ml_enabled else "Model Disabled"
+        )
+        tk.Label(
+            mlframe,
+            textvariable=self.ml_status_var,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+            font=("Arial", 12, "bold"),
+        ).pack(side=tk.LEFT)
+
+        self.ml_risk_label = tk.Label(
+            mlframe,
+            text="Risk: 0%",
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+            font=("Arial", 12),
+        )
+        self.ml_risk_label.pack(side=tk.LEFT, padx=20)
+
+        # ---- Defense chain ----
+        defn = tk.LabelFrame(
+            self.root,
+            text="Defense chain",
+            padx=12,
+            pady=12,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        defn.pack(fill=tk.X, padx=10, pady=6)
+
+        self.firewall_indicator = tk.Label(
+            defn,
+            text="FIREWALL: ACTIVE",
+            bg=self.panelbg(),
+            fg="green",
+            font=("Arial", 10, "bold"),
+        )
+        self.firewall_indicator.pack(side=tk.LEFT, padx=10)
+
+        self.limiter_indicator = tk.Label(
+            defn,
+            text=f"RATE LIMITER: {self.max_requests} req/{self.window_duration}s",
+            bg=self.panelbg(),
+            fg="#7b1fa2",
+            font=("Arial", 10, "bold"),
+        )
+        self.limiter_indicator.pack(side=tk.LEFT, padx=10)
+
+        self.app_indicator = tk.Label(
+            defn,
+            text="APPLICATION: PROTECTED",
+            bg=self.panelbg(),
+            fg="#388e3c",
+            font=("Arial", 10, "bold"),
+        )
+        self.app_indicator.pack(side=tk.LEFT, padx=10)
+
+        # ---- Blacklist table ----
+        blframe = tk.LabelFrame(
+            self.root,
+            text="Blacklist (active)",
+            padx=15,
+            pady=15,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        blframe.pack(fill=tk.X, padx=10, pady=6)
+
+        self.bltree = ttk.Treeview(
+            blframe, columns=("ip", "expires"), show="headings", height=4
+        )
+        self.bltree.heading("ip", text="IP")
+        self.bltree.heading("expires", text="Expires in (s)")
+        self.bltree.column("ip", width=200)
+        self.bltree.column("expires", width=120)
+        self.bltree.pack(fill=tk.X)
+
+        # ---- Log area ----
+        logf = tk.LabelFrame(
+            self.root,
+            text="Request Log",
+            padx=25,
+            pady=25,
+            bg=self.panelbg(),
+            fg=self.panelfg(),
+        )
+        logf.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        tk.Button(
+            logf,
             text="View Log Details",
             command=self.view_log_details,
             bg="#8e44ad",
@@ -517,434 +608,558 @@ Features:
             font=("Arial", 9, "bold"),
             padx=12,
             pady=4,
-            relief=tk.RAISED,
-            bd=1
+        ).pack(side=tk.TOP, pady=(0, 5))
+
+        self.logtext = scrolledtext.ScrolledText(
+            logf, height=20, state=tk.DISABLED, bg="white", font=("Courier", 11)
         )
-        view_log_btn.pack(side=tk.TOP, pady=(0, 5))
-        
-        # Request Log Text Area (maximized to utilize all available space)
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame,
-            height=75,  # Maximized height to utilize all available space
-            state=tk.DISABLED,
-            bg='white',
-            font=('Courier', 12)
-        )
-        self.log_text.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
-    
+        self.logtext.pack(fill=tk.BOTH, expand=True)
+
+        # start blacklist GUI refresh
+        self.root.after(1000, self.refresh_blacklist_gui)
+
+    # ============================================================
+    # Flask server & rate limiting
+    # ============================================================
     def setup_flask_routes(self):
-        @self.flask_app.route('/', methods=['GET'])
+        @self.flask_app.route("/", methods=["GET"])
         def index():
-            # Get client IP
-            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-            
-            # Check if IP is blacklisted
             current_time = time.time()
+            client_ip = request.environ.get("HTTP_X_FORWARDED_FOR", request.remote_addr)
+
+            # Check blacklist
             if client_ip in self.blacklist and self.blacklist[client_ip] > current_time:
-                # Log the blocked request
-                self.log_request_to_csv(client_ip, 403, "Forbidden - IP Blacklisted")
-                self.update_defense_chain_status("BLOCKED", f"IP {client_ip} blocked by firewall")
+                self.writelogentry("REQUEST", f"{client_ip} - 403 Forbidden - IP Blacklisted")
+                self.update_defense_chain_status("BLACKLISTED", f"IP {client_ip} blocked by firewall")
+                self.record_event_for_features(client_ip, 403, ts=current_time)
                 return "Forbidden - IP Blacklisted", 403
-            
-            # Clean up expired blacklist entries
-            expired_ips = [ip for ip, expiry in self.blacklist.items() if expiry <= current_time]
-            for ip in expired_ips:
-                del self.blacklist[ip]
-            
-            # Check rate limit
-            # Remove requests outside the window
+
+            # Remove expired blacklist entries
+            for ip, exp in list(self.blacklist.items()):
+                if exp <= current_time:
+                    del self.blacklist[ip]
+
+            # Sliding window maintenance
             while self.request_window and current_time - self.request_window[0] > self.window_duration:
                 self.request_window.popleft()
-            
-            # Check if we're at the limit
+
+            # Rate limiting check
             if len(self.request_window) >= self.max_requests:
-                # Increment violation count
                 self.rate_limit_violations[client_ip] = self.rate_limit_violations.get(client_ip, 0) + 1
-                
-                # If violations exceed threshold, blacklist IP
-                if self.rate_limit_violations[client_ip] > 3:
-                    self.blacklist[client_ip] = current_time + 60  # Blacklist for 60 seconds
+                if self.rate_limit_violations[client_ip] >= 3:
+                    self.blacklist[client_ip] = current_time + self.blacklist_duration
                     self.update_blacklist_status(True, client_ip)
-                    # Log the forbidden request
-                    self.log_request_to_csv(client_ip, 403, "Forbidden - IP Blacklisted")
+                    self.writelogentry("REQUEST", f"{client_ip} - 403 Forbidden - IP Blacklisted")
                     self.update_defense_chain_status("BLACKLISTED", f"IP {client_ip} blacklisted by rate limiter")
+                    self.record_event_for_features(client_ip, 403, ts=current_time)
+                    self.root.after(0, lambda: msg.showwarning("Blacklist", f"IP {client_ip} has been blacklisted"))
                     return "Forbidden - IP Blacklisted", 403
-                else:
-                    # Log the rate limit violation
-                    self.log_request_to_csv(client_ip, 429, "Too Many Requests")
-                    self.update_defense_chain_status("RATE_LIMITED", f"IP {client_ip} rate limited")
-                    return "Too Many Requests", 429
-            
-            # Add current request to window
+
+                self.writelogentry("REQUEST", f"{client_ip} - 429 Too Many Requests")
+                self.update_defense_chain_status("RATELIMITED", f"IP {client_ip} rate limited")
+                self.record_event_for_features(client_ip, 429, ts=current_time)
+                return "Too Many Requests", 429
+
+            # Allowed
             self.request_window.append(current_time)
-            # Log the successful request
-            self.log_request_to_csv(client_ip, 200, "OK")
-            self.update_defense_chain_status("ALLOWED", f"IP {client_ip} request allowed to application")
+            self.writelogentry("REQUEST", f"{client_ip} - 200 OK")
+            self.update_defense_chain_status("ALLOWED", f"IP {client_ip} request allowed")
+            self.record_event_for_features(client_ip, 200, ts=current_time)
             return "OK", 200
-    
+
     def toggle_server(self):
         if not self.server_running:
             self.start_server()
         else:
             self.stop_server()
-    
+
     def start_server(self):
-        if not self.server_running:
-            self.server_running = True
-            self.server_status_var.set("Server Status: Online")
-            self.server_status_label.configure(fg="green")
-            self.start_server_btn.configure(text="Stop Server", bg="#e74c3c")
-            
-            # Start Flask server in a separate thread
-            self.server_thread = threading.Thread(target=self.run_flask_server, daemon=True)
-            self.server_thread.start()
-            
-            # Start health monitoring if psutil is available
-            if PSUTIL_AVAILABLE:
-                self.health_monitor_thread = threading.Thread(target=self.monitor_health, daemon=True)
-                self.health_monitor_thread.start()
-            
-            self.log_message("Server started on http://127.0.0.1:5000/")
-    
-    def stop_server(self):
         if self.server_running:
-            self.server_running = False
-            self.server_status_var.set("Server Status: Offline")
-            self.server_status_label.configure(fg="red")
-            self.start_server_btn.configure(text="Start Server", bg="#27ae60")
-            
-            # Stop the Flask server
-            if hasattr(self, 'server'):
+            return
+        self.server_running = True
+        self.server_status_var.set("Server Status: Online")
+        self.server_status_label.config(fg="green")
+        self.start_server_btn.config(text="Stop Server", bg="#e74c3c")
+        self.update_blacklist_status(False, None)
+
+        self.server_thread = threading.Thread(target=self.run_flask_server, daemon=True)
+        self.server_thread.start()
+        self.log_gui("Server started on http://127.0.0.1:5000")
+
+    def stop_server(self):
+        if not self.server_running:
+            return
+        self.server_running = False
+        self.server_status_var.set("Server Status: Offline")
+        self.server_status_label.config(fg="red")
+        self.start_server_btn.config(text="Start Server", bg="#27ae60")
+        self.update_blacklist_status(False, None)
+
+        try:
+            if hasattr(self, "server"):
                 self.server.shutdown()
-            
-            # Reset blacklist status
-            self.update_blacklist_status(False, None)
-            
-            self.log_message("Server stopped")
-    
+        except Exception:
+            pass
+        self.log_gui("Server stopped")
+
     def run_flask_server(self):
-        from werkzeug.serving import make_server
-        
-        # Create a server
-        self.server = make_server('127.0.0.1', 5000, self.flask_app)
-        self.server.serve_forever()
-    
+        try:
+            from werkzeug.serving import make_server
+            self.server = make_server("127.0.0.1", 5000, self.flask_app)
+            self.server.serve_forever()
+        except OSError as e:
+            self.log_gui(f"Port 5000 unavailable: {e}")
+
+    # ============================================================
+    # Attack engine
+    # ============================================================
     def toggle_attack(self):
         if not self.attack_running:
             self.start_attack()
         else:
             self.stop_attack()
-    
+
     def start_attack(self):
-        if not self.attack_running:
-            self.attack_running = True
-            self.attack_start_time = datetime.datetime.now()
-            self.attacker_status_var.set("Attacker Status: Active")
-            self.attacker_status_label.configure(fg="red")
-            # Disable Start Attack button when attack is running
-            self.start_attack_btn.configure(state=tk.DISABLED)
-            self.stop_attack_btn.configure(state=tk.NORMAL)
-            
-            # Add a gap in Excel log to differentiate attacks (if there's existing data)
-            if PANDAS_AVAILABLE and hasattr(self, 'excel_data') and len(self.excel_data) > 0:
-                self.excel_data.append({
-                    'Timestamp': '',
-                    'Event_Type': '--- GAP BETWEEN ATTACKS ---',
-                    'Details': '',
-                    'Duration_Seconds': ''
-                })
-                self.save_excel_log()
-            
-            # Log attack start
-            start_time_str = self.attack_start_time.strftime("%Y-%m-%d %H:%M:%S")
-            self.log_message(f"Attack started at {start_time_str}")
-            self.log_attack_event_to_csv("ATTACK_START", f"Attack started at {start_time_str}")
-            
-            # Start attack in a separate thread
-            self.attack_thread = threading.Thread(target=self.run_attack, daemon=True)
-            self.attack_thread.start()
-    
-    def stop_attack(self):
         if self.attack_running:
-            self.attack_running = False
-            self.attack_end_time = datetime.datetime.now()
-            self.attacker_status_var.set("Attacker Status: Inactive")
-            self.attacker_status_label.configure(fg="gray")
-            # Re-enable Start Attack button when attack stops
-            self.start_attack_btn.configure(state=tk.NORMAL)
-            self.stop_attack_btn.configure(state=tk.DISABLED)
-            
-            # Log attack end and duration
-            end_time_str = self.attack_end_time.strftime("%Y-%m-%d %H:%M:%S")
-            self.log_message(f"Attack stopped at {end_time_str}")
-            self.log_attack_event_to_csv("ATTACK_STOP", f"Attack stopped at {end_time_str}")
-            
-            # Calculate and log duration if start time is available
-            if self.attack_start_time:
-                duration = self.attack_end_time - self.attack_start_time
-                duration_seconds = duration.total_seconds()
-                self.log_message(f"Attack duration: {duration_seconds:.1f} seconds")
-                self.log_attack_event_to_csv("ATTACK_DURATION", f"Attack duration: {duration_seconds:.1f} seconds", duration_seconds)
-                
-                # Log summary statistics
-                self.log_message(f"Total requests sent: {self.request_count}")
-                self.log_message(f"Successful requests (200): {self.success_count}")
-                self.log_message(f"Blocked requests (429): {self.blocked_count}")
-                
-                # Log summary to Excel
-                self.log_attack_event_to_csv("ATTACK_SUMMARY", f"Total: {self.request_count}, Successful: {self.success_count}, Blocked: {self.blocked_count}")
-    
-    def run_attack(self):
+            return
+        self.attack_running = True
+        self.attacker_status_var.set("Attacker Status: Active")
+        self.attacker_status_label.config(fg="red")
+        self.start_attack_btn.config(state=tk.DISABLED)
+        self.stop_attack_btn.config(state=tk.NORMAL)
+
+        self.attack_rps = max(1, int(self.attack_rps_var.get()))
+        start_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.log_gui(f"Attack started at {start_time_str}")
+        self.writelogentry("ATTACKSTART", f"Attack started at {start_time_str}")
+
+        mode = self.attack_mode_var.get()
+        self.attack_threads = []
+        for i in range(1):
+            t = threading.Thread(target=self.run_attack, args=(mode, i), daemon=True)
+            t.start()
+            self.attack_threads.append(t)
+
+    def stop_attack(self):
+        if not self.attack_running:
+            return
+        self.attack_running = False
+        self.attacker_status_var.set("Attacker Status: Inactive")
+        self.attacker_status_label.config(fg=self.mutedfg())
+        self.start_attack_btn.config(state=tk.NORMAL)
+        self.stop_attack_btn.config(state=tk.DISABLED)
+
+        end_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.log_gui(f"Attack stopped at {end_time_str}")
+        self.writelogentry("ATTACKSTOP", f"Attack stopped at {end_time_str}")
+        self.log_gui(
+            f"Total requests: {self.request_count} | 200: {self.success_count} | 429/403: {self.blocked_count}"
+        )
+        self.writelogentry(
+            "ATTACKSUMMARY",
+            f"Total {self.request_count}, Successful {self.success_count}, Blocked {self.blocked_count}",
+        )
+
+    def run_attack(self, mode, attacker_id):
+        interval = max(0.001, 1.0 / float(self.attack_rps))
         while self.attack_running:
             try:
-                # Send request to server
-                response = requests.get('http://127.0.0.1:5000/', timeout=5)
-                
-                # Update counters
-                self.request_count += 1
-                
-                if response.status_code == 200:
-                    self.success_count += 1
-                elif response.status_code == 429:
-                    self.blocked_count += 1
-                
-                # Update GUI
-                self.update_stats()
-                # Highlight 429 responses for better visibility
-                if response.status_code == 429:
-                    self.log_message(f"[REQ #{self.request_count}] >>> RATE LIMITED <<< {response.status_code} {response.reason}")
+                if mode == "Flood":
+                    self.httprequest()
+                    time.sleep(interval)
+                elif mode == "Burst":
+                    for _ in range(int(self.attack_rps / 2) or 1):
+                        self.httprequest()
+                    time.sleep(1.0)
+                elif mode == "Randomized":
+                    self.httprequest()
+                    time.sleep(random.uniform(interval * 0.5, interval * 5))
+                elif mode == "Slowloris":
+                    self.slowloris_like()
+                    time.sleep(0.2)
+                elif mode == "Botnet":
+                    fake_ip = f"10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
+                    self.httprequest(headers={"X-Forwarded-For": fake_ip})
+                    time.sleep(random.uniform(interval * 0.5, interval * 2))
+                elif mode == "UDP Flood":
+                    self.udp_payload_size = int(self.udppayload_var.get())
+                    self.udp_count = int(self.udpcount_var.get())
+                    self.udp_burst(
+                        payload_size=self.udp_payload_size, count=self.udp_count
+                    )
+                    time.sleep(0.2)
+                elif mode == "TCP SYN-like":
+                    self.tcp_syn_like()
+                    time.sleep(0.1)
                 else:
-                    self.log_message(f"[REQ #{self.request_count}] {response.status_code} {response.reason}")
-                
-                # Small delay to control request rate (slower to show 429 responses)
-                time.sleep(0.3)
-            except requests.exceptions.ConnectionError:
-                self.log_message("[ERROR] Cannot connect to server. Is it running?")
-                time.sleep(1)
-            except requests.exceptions.RequestException as e:
-                self.log_message(f"[ERROR] Request failed: {str(e)}")
-                time.sleep(1)
+                    self.httprequest()
+                    time.sleep(interval)
             except Exception as e:
-                self.log_message(f"[ERROR] Unexpected error: {str(e)}")
+                self.log_gui(f"ATT {attacker_id} Error: {e}")
+                time.sleep(0.2)
+
+    def httprequest(self, headers=None):
+        try:
+            r = requests.get(
+                "http://127.0.0.1:5000", timeout=5, headers=headers or {}
+            )
+            with self.state_lock:
+                self.request_count += 1
+                if r.status_code == 200:
+                    self.success_count += 1
+                elif r.status_code in (429, 403):
+                    self.blocked_count += 1
+            self.update_stats()
+            if r.status_code == 429:
+                self.log_gui(f"REQ {self.request_count} RATE LIMITED {r.status_code}")
+            elif r.status_code == 403:
+                self.log_gui(f"REQ {self.request_count} BLACKLISTED {r.status_code}")
+            else:
+                self.log_gui(f"REQ {self.request_count} {r.status_code}")
+        except requests.exceptions.ConnectionError:
+            self.log_gui("ERROR: Cannot connect to server. Is it running?")
+            time.sleep(0.5)
+        except requests.exceptions.RequestException as e:
+            self.log_gui(f"ERROR: Request failed: {e}")
+
+    def slowloris_like(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(2)
+            s.connect(("127.0.0.1", 5000))
+            s.sendall(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n")
+            time.sleep(2)
+            s.sendall(b"User-Agent: Slowloris\r\n")
+            time.sleep(2)
+            s.sendall(b"\r\n")
+            s.close()
+            with self.state_lock:
+                self.request_count += 1
+            self.update_stats()
+            self.log_gui("SLOWLORIS: partial header trickle sent")
+        except Exception as e:
+            self.log_gui(f"SLOWLORIS error: {e}")
+
+    def udp_burst(self, payload_size=256, count=100, target_port=5001):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            payload = bytes(random.getrandbits(8) for _ in range(payload_size))
+            for _ in range(count):
+                sock.sendto(payload, ("127.0.0.1", target_port))
+            sock.close()
+            self.log_gui(f"UDP: Sent {count} packets to 127.0.0.1:{target_port}")
+            with self.state_lock:
+                self.request_count += count
+            self.update_stats()
+        except Exception as e:
+            self.log_gui(f"UDP error: {e}")
+
+    def tcp_syn_like(self, target_port=5002):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.2)
+            s.connect_ex(("127.0.0.1", target_port))
+            s.close()
+            self.log_gui(f"TCP SYN-like: attempted connect to 127.0.0.1:{target_port}")
+            with self.state_lock:
+                self.request_count += 1
+            self.update_stats()
+        except Exception as e:
+            self.log_gui(f"TCP SYN-like error: {e}")
+
+    # ============================================================
+    # ML engine & adaptive limits
+    # ============================================================
+    def record_event_for_features(self, ip, status_code, ts=None):
+        ts = ts or time.time()
+        self.metrics_window.append(ts)
+        self.ip_counts_window.append(ip)
+        self.status_counts_window.append(status_code)
+
+    def compute_ip_entropy(self):
+        if not self.ip_counts_window:
+            return 0.0
+        c = Counter(self.ip_counts_window)
+        total = sum(c.values())
+        if total == 0:
+            return 0.0
+        ent = 0.0
+        for cnt in c.values():
+            p = cnt / total
+            ent -= p * math.log(p + 1e-9)
+        return ent
+
+    def compute_feature_vector(self):
+        now = time.time()
+        recent_ts = [t for t in self.metrics_window
+                     if now - t <= self.feature_window_seconds]
+        req_rate = (
+            len(recent_ts) / self.feature_window_seconds
+            if self.feature_window_seconds > 0
+            else 0.0
+        )
+
+        cstatus = Counter(self.status_counts_window)
+        total_resp = sum(cstatus.values()) or 1
+        ok_ratio = cstatus.get(200, 0) / total_resp
+        limited_ratio = cstatus.get(429, 0) / total_resp
+        forbidden_ratio = cstatus.get(403, 0) / total_resp
+        ip_entropy = self.compute_ip_entropy()
+        blacklist_size = len(self.blacklist)
+        violation_total = sum(self.rate_limit_violations.values()) \
+            if hasattr(self, "rate_limit_violations") else 0
+
+        return (
+            req_rate,
+            ok_ratio,
+            limited_ratio,
+            forbidden_ratio,
+            ip_entropy,
+            blacklist_size,
+            violation_total,
+        )
+
+    def init_ml(self):
+        # Simple synthetic dataset: normal vs attack
+        normal = np.array([
+            [0.3, 0.9, 0.05, 0.05, 0.2, 0, 0]
+            for _ in range(50)
+        ])
+        attack = np.array([
+            [5.0, 0.1, 0.6, 0.3, 1.5, 5, 50]
+            for _ in range(50)
+        ])
+        Xboot = np.vstack([normal, attack])
+        yboot = np.array([0] * len(normal) + [1] * len(attack))
+
+        self.iforest = IsolationForest(
+            n_estimators=100, contamination=0.1, random_state=42
+        )
+        self.iforest.fit(Xboot)
+
+        self.logreg = LogisticRegression(max_iter=200)
+        self.logreg.fit(Xboot, yboot)
+
+    def start_ml_loop(self):
+        if not self.ml_enabled:
+            return
+        t = threading.Thread(target=self.ml_loop, daemon=True)
+        t.start()
+
+    def ml_loop(self):
+        while True:
+            try:
+                if not self.ml_enabled:
+                    return
+                fv = self.compute_feature_vector()
+                X = np.array(fv).reshape(1, -1)
+
+                anomalyscore = -float(self.iforest.decision_function(X)[0])
+                probattack = float(self.logreg.predict_proba(X)[0, 1])
+                predcls = "ATTACK" if (probattack >= 0.5 or anomalyscore >= 0.5) else "NORMAL"
+
+                if len(self.ml_pred_history) == self.ml_pred_history.maxlen:
+                    self.ml_pred_history.popleft()
+                self.ml_pred_history.append(probattack)
+
+                self.root.after(
+                    0, self.update_ml_gui, predcls, probattack, anomalyscore
+                )
+                self.adaptive_limits(probattack)
+
+                if probattack >= 0.8:
+                    self.root.after(
+                        0,
+                        lambda: msg.showwarning(
+                            "Attack Alert",
+                            "High risk detected! Defense chain tightening.",
+                        ),
+                    )
                 time.sleep(1)
-    
+            except Exception:
+                time.sleep(1)
+
+    def update_ml_gui(self, predcls, probattack, anomalyscore):
+        self.ml_status_var.set(
+            f"Model Ready | Prediction: {predcls} | p(attack): {probattack:.2f} | anomaly: {anomalyscore:.2f}"
+        )
+        self.ml_risk_label.config(text=f"Risk: {int(probattack * 100)}%")
+
+    def adaptive_limits(self, probattack):
+        try:
+            if probattack >= 0.6:
+                new_max = max(1, int(self.maxreq_var.get()) - 2)
+            else:
+                new_max = int(self.maxreq_var.get())
+
+            if new_max != self.max_requests:
+                self.max_requests = new_max
+                self.limiter_indicator.config(
+                    text=f"RATE LIMITER: {self.max_requests} req/{self.window_duration}s",
+                    fg="#7b1fa2",
+                )
+        except Exception as e:
+            self.log_gui(f"Adaptive limits error: {e}")
+
+    # ============================================================
+    # Logging, reporting, monitoring, misc GUI
+    # ============================================================
+    def init_logging(self):
+        self.logfile_csv = "attack_log.csv"
+        if not os.path.exists(self.logfile_csv):
+            with open(self.logfile_csv, "w", newline="") as f:
+                csv.writer(f).writerow(
+                    ["Timestamp", "EventType", "Details", "DurationSeconds"]
+                )
+
+    def writelogentry(self, eventtype, details, duration=None):
+        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        duration_str = str(duration) if duration is not None else ""
+        try:
+            with open(self.logfile_csv, "a", newline="") as f:
+                csv.writer(f).writerow([ts, eventtype, details, duration_str])
+        except Exception as e:
+            self.log_gui(f"CSV log write error: {e}")
+
+    def view_log_details(self):
+        try:
+            if os.path.exists(self.logfile_csv):
+                if platform.system() == "Windows":
+                    os.startfile(self.logfile_csv)
+                elif platform.system() == "Darwin":
+                    subprocess.call(["open", self.logfile_csv])
+                else:
+                    subprocess.call(["xdg-open", self.logfile_csv])
+                self.log_gui(f"Opening log {self.logfile_csv}")
+            else:
+                self.log_gui("No log file yet.")
+        except Exception as e:
+            self.log_gui(f"Failed to open log: {e}")
+
+    def generate_report(self):
+        try:
+            reportfile = "simulation_report.csv"
+            with open(reportfile, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Metric", "Value"])
+                writer.writerow(["Total Requests", self.request_count])
+                writer.writerow(["200 OK", self.success_count])
+                writer.writerow(["429/403 Blocked", self.blocked_count])
+                writer.writerow(["Max Requests", self.max_requests])
+                writer.writerow(["Window Duration (s)", self.window_duration])
+                writer.writerow(["Blacklist Duration (s)", self.blacklist_duration])
+            self.log_gui(f"Report generated: {reportfile}")
+            msg.showinfo("Report", f"Saved {reportfile}")
+        except Exception as e:
+            self.log_gui(f"Failed to generate report: {e}")
+
+    def update_params(self):
+        try:
+            self.max_requests = int(self.maxreq_var.get())
+            self.window_duration = int(self.window_var.get())
+            self.blacklist_duration = int(self.blacklist_var.get())
+            self.udp_payload_size = int(self.udppayload_var.get())
+            self.udp_count = int(self.udpcount_var.get())
+            self.limiter_indicator.config(
+                text=f"RATE LIMITER: {self.max_requests} req/{self.window_duration}s",
+                fg="#7b1fa2",
+            )
+        except Exception as e:
+            self.log_gui(f"Param update error: {e}")
+
     def update_stats(self):
-        # Schedule GUI update on main thread
-        self.root.after(0, self._update_stats_gui)
-    
-    def _update_stats_gui(self):
+        self.root.after(0, self.update_stats_gui)
+
+    def update_stats_gui(self):
         self.requests_sent_var.set(f"Requests Sent: {self.request_count}")
         self.successful_var.set(f"Successful (200 OK): {self.success_count}")
-        self.blocked_var.set(f"Blocked (429): {self.blocked_count}")
-    
-    def refresh_stats(self):
-        """Reset statistics and clear logs"""
-        # Reset counters
-        self.request_count = 0
-        self.success_count = 0
-        self.blocked_count = 0
-        
-        # Update GUI
-        self._update_stats_gui()
-        
-        # Clear log text
-        self.log_text.configure(state=tk.NORMAL)
-        self.log_text.delete(1.0, tk.END)
-        self.log_text.configure(state=tk.DISABLED)
-        
-        # Reset system monitoring if available
-        if PSUTIL_AVAILABLE:
-            self.cpu_label.config(text="CPU: 0%")
-            self.ram_label.config(text="RAM: 0%")
-        
-        # Note: We don't clear Excel data buffer or file on refresh to maintain persistent logs
-        # Only clear the in-memory buffer, not the saved file
-        if PANDAS_AVAILABLE and hasattr(self, 'excel_data'):
-            # Keep existing excel_data for persistence, just continue appending to it
-            pass
-        
-        self.log_message("Statistics and logs refreshed")
-    
-    def view_log_details(self):
-        """Open the Excel log file to view detailed logs"""
-        try:
-            import os
-            import platform
-            import subprocess
-            
-            log_file = 'attack_log.xlsx'
-            if os.path.exists(log_file):
-                # Open the file with the default application
-                if platform.system() == 'Windows':
-                    os.startfile(log_file)
-                elif platform.system() == 'Darwin':  # macOS
-                    subprocess.call(['open', log_file])
-                else:  # Linux
-                    subprocess.call(['xdg-open', log_file])
-                self.log_message("Opening log details in Excel...")
-            else:
-                self.log_message("No log file found. Start an attack to generate logs.")
-        except Exception as e:
-            self.log_message(f"Failed to open log file: {str(e)}")
-    
-    def log_message(self, message):
-        # Schedule log update on main thread
-        self.root.after(0, self._log_message_gui, message)
-    
-    def _log_message_gui(self, message):
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        formatted_message = f"[{timestamp}] {message}\n"
-        
-        self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, formatted_message)
-        self.log_text.see(tk.END)
-        self.log_text.configure(state=tk.DISABLED)
-    
-    def init_logging(self):
-        """Initialize Excel logging if available"""
-        # Initialize Excel logging if pandas is available
-        if PANDAS_AVAILABLE:
-            try:
-                import os
-                # Check if log file already exists and load existing data
-                if os.path.exists('attack_log.xlsx'):
-                    # Load existing data
-                    try:
-                        existing_df = pd.read_excel('attack_log.xlsx')
-                        self.excel_data = existing_df.to_dict('records')
-                    except Exception:
-                        # If we can't read existing file, start with empty data
-                        self.excel_data = []
-                else:
-                    # Create empty Excel file with headers if it doesn't exist
-                    self.excel_data = []
-                    df = pd.DataFrame(columns=['Timestamp', 'Event_Type', 'Details', 'Duration_Seconds'])
-                    df.to_excel('attack_log.xlsx', index=False)
-            except Exception as e:
-                print(f"Failed to initialize Excel log file: {e}")
-                self.excel_data = []
-        else:
-            self.excel_data = None
-    
-    def log_request_to_csv(self, ip, status_code, message):
-        """Log request details to Excel if available"""
-        try:
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Log to Excel data buffer if available
-            if PANDAS_AVAILABLE:
-                if hasattr(self, 'excel_data'):
-                    self.excel_data.append({
-                        'Timestamp': timestamp,
-                        'Event_Type': 'REQUEST',
-                        'Details': f'{ip} - {status_code} {message}',
-                        'Duration_Seconds': ''
-                    })
-                    
-                    # Save to Excel file immediately
-                    self.save_excel_log()
-                else:
-                    print("excel_data attribute not found")
-        except Exception as e:
-            print(f"Error in log_request_to_csv: {e}")
-    
-    def log_attack_event_to_csv(self, event_type, details, duration=None):
-        """Log attack events (start, stop, duration) to Excel if available"""
-        try:
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Log to Excel data buffer if available
-            if PANDAS_AVAILABLE:
-                if hasattr(self, 'excel_data'):
-                    duration_str = str(duration) if duration is not None else ''
-                    self.excel_data.append({
-                        'Timestamp': timestamp,
-                        'Event_Type': event_type,
-                        'Details': details,
-                        'Duration_Seconds': duration_str
-                    })
-                    
-                    # Save to Excel file immediately
-                    self.save_excel_log()
-                else:
-                    print("excel_data attribute not found for attack event")
-        except Exception as e:
-            print(f"Error in log_attack_event_to_csv: {e}")
-    
-    def save_excel_log(self):
-        """Save accumulated log data to Excel file"""
-        if PANDAS_AVAILABLE and hasattr(self, 'excel_data'):
-            try:
-                # Save to Excel file
-                df = pd.DataFrame(self.excel_data)
-                df.to_excel('attack_log.xlsx', index=False)
-            except Exception as e:
-                print(f"Failed to save Excel log: {e}")
-    
+        self.blocked_var.set(f"Blocked (429/403): {self.blocked_count}")
+
+    def log_gui(self, message: str):
+        if not hasattr(self, "logtext"):
+            return
+        ts = datetime.datetime.now().strftime("%H:%M:%S")
+        msgline = f"[{ts}] {message}\n"
+        self.logtext.config(state=tk.NORMAL)
+        self.logtext.insert(tk.END, msgline)
+        self.logtext.see(tk.END)
+        self.logtext.config(state=tk.DISABLED)
+
     def monitor_health(self):
-        """Monitor server health (CPU and RAM usage)"""
         if not PSUTIL_AVAILABLE:
             return
-            
-        while self.server_running:
+        while True:
             try:
-                # Get CPU usage
-                cpu_percent = psutil.cpu_percent(interval=1)
-                
-                # Get RAM usage
-                ram_percent = psutil.virtual_memory().percent
-                
-                # Update GUI
-                self.root.after(0, self.update_health_display, cpu_percent, ram_percent)
-                
-                time.sleep(1)  # Update every second
+                cpupercent = psutil.cpu_percent(interval=1)
+                rampercent = psutil.virtual_memory().percent
+                self.root.after(0, self.update_health_display, cpupercent, rampercent)
             except Exception:
-                pass  # Ignore errors in health monitoring
-    
-    def update_health_display(self, cpu_percent, ram_percent):
-        """Update the health display in the GUI"""
-        self.cpu_label.config(text=f"CPU: {cpu_percent:.1f}%")
-        self.ram_label.config(text=f"RAM: {ram_percent:.1f}%")
-    
+                time.sleep(1)
+
+    def update_health_display(self, cpupercent, rampercent):
+        self.app_indicator.config(
+            text=f"APPLICATION: PROTECTED | CPU {cpupercent:.0f}% RAM {rampercent:.0f}%",
+            fg="#388e3c",
+        )
+
     def update_blacklist_status(self, active, ip):
-        """Update the blacklist status display"""
-        if active:
-            self.blacklist_status_var.set(f"Blacklist Status: Active (IP {ip} Banned)")
-            self.blacklist_status_label.configure(fg="red")
+        if active and ip:
+            self.blacklist_status_var.set(f"Blacklist Status: Active | IP {ip} Banned")
+            self.blacklist_status_label.config(fg="red")
         else:
             self.blacklist_status_var.set("Blacklist Status: Inactive")
-            self.blacklist_status_label.configure(fg="gray")
-    
-    def update_defense_chain_status(self, event_type, details):
-        """Update the defense chain visualization based on events"""
-        # This method updates the visual status of defense components based on events
+            self.blacklist_status_label.config(fg=self.mutedfg())
+
+    def refresh_blacklist_gui(self):
+        now = time.time()
+        active_items = [
+            (ip, max(0, int(exp - now)))
+            for ip, exp in self.blacklist.items()
+            if exp > now
+        ]
+        for row in self.bltree.get_children():
+            self.bltree.delete(row)
+        for ip, remaining in active_items:
+            self.bltree.insert("", tk.END, values=(ip, remaining))
+        self.root.after(1000, self.refresh_blacklist_gui)
+
+    def update_defense_chain_status(self, eventtype, details):
         try:
-            if hasattr(self, 'firewall_status') and hasattr(self, 'limiter_status') and hasattr(self, 'app_status'):
-                if event_type == "BLOCKED":
-                    # Update firewall status
-                    self.firewall_status.config(text="BLOCKING", fg="red")
-                    # Reset after a short delay
-                    self.root.after(1000, lambda: self.firewall_status.config(text="ACTIVE", fg="green"))
-                elif event_type == "RATE_LIMITED":
-                    # Update rate limiter status
-                    self.limiter_status.config(text="LIMITING", fg="orange")
-                    # Reset after a short delay
-                    self.root.after(1000, lambda: self.limiter_status.config(text="5 req/10 sec", fg="#7b1fa2"))
-                elif event_type == "BLACKLISTED":
-                    # Update both rate limiter and firewall
-                    self.limiter_status.config(text="BLACKLISTING", fg="red")
-                    self.firewall_status.config(text="BLOCKING", fg="red")
-                    # Reset after a short delay
-                    self.root.after(1000, lambda: self.limiter_status.config(text="5 req/10 sec", fg="#7b1fa2"))
-                    self.root.after(1000, lambda: self.firewall_status.config(text="ACTIVE", fg="green"))
-                elif event_type == "ALLOWED":
-                    # Update application status
-                    self.app_status.config(text="PROCESSING", fg="blue")
-                    # Reset after a short delay
-                    self.root.after(1000, lambda: self.app_status.config(text="PROTECTED", fg="#388e3c"))
+            if eventtype == "BLOCKED":
+                self.firewall_indicator.config(text="FIREWALL: BLOCKING", fg="red")
+            elif eventtype == "RATELIMITED":
+                self.limiter_indicator.config(
+                    text=f"RATE LIMITER: LIMITING {self.max_requests}/{self.window_duration}s",
+                    fg="orange",
+                )
+            elif eventtype == "BLACKLISTED":
+                self.firewall_indicator.config(text="FIREWALL: BLACKLISTING", fg="red")
+                self.limiter_indicator.config(text="RATE LIMITER: BLACKLISTING", fg="red")
+            elif eventtype == "ALLOWED":
+                self.app_indicator.config(text="APPLICATION: PROCESSING", fg="blue")
+
+            self.root.after(
+                1000,
+                lambda: self.firewall_indicator.config(
+                    text="FIREWALL: ACTIVE", fg="green"
+                ),
+            )
+            self.root.after(
+                1000,
+                lambda: self.limiter_indicator.config(
+                    text=f"RATE LIMITER: {self.max_requests} req/{self.window_duration}s",
+                    fg="#7b1fa2",
+                ),
+            )
+            self.root.after(
+                1000,
+                lambda: self.app_indicator.config(
+                    text="APPLICATION: PROTECTED", fg="#388e3c"
+                ),
+            )
         except Exception:
-            # Silently ignore visualization errors
             pass
+
 
 if __name__ == "__main__":
     root = tk.Tk()
