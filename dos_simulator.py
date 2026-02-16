@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox as msg
-import threading, time, requests, csv, datetime, random, socket, math, os, platform, subprocess
-
+import threading, time, requests, csv, datetime, random, socket, math, os, platform, subprocess, sys
 # Image handling
 try:
     from PIL import Image, ImageTk, ImageDraw
@@ -30,6 +29,55 @@ except Exception:
 MATPLOTLIB_AVAILABLE = False
 
 
+def is_admin():
+    """Check if the script is running with administrative privileges."""
+    try:
+        if platform.system().lower() == 'windows':
+            import ctypes
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        else:
+            # For Unix-like systems
+            return os.geteuid() == 0
+    except:
+        return False
+
+
+def request_admin_privileges():
+    """Request administrative privileges if not already running as admin."""
+    if not is_admin():
+        # Show a message box to inform the user
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            messagebox.showwarning(
+                "Administrative Privileges Required",
+                "This application requires administrative privileges to run.\n\n"
+                "Please restart the application as an administrator."
+            )
+            root.destroy()
+        except:
+            pass
+        
+        # Exit the application since we can't obtain admin rights automatically
+        # (Automatic elevation is complex and can be problematic)
+        sys.exit(1)
+
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
+
+# Ensure the application runs with administrative privileges
+request_admin_privileges()
 class DoSSimulatorApp:
     # ============================================================
     # Phase 1 – Bootstrap & landing
@@ -53,11 +101,10 @@ class DoSSimulatorApp:
         if PIL_AVAILABLE:
             try:
                 # Load and resize the logo
-                logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "DOSRL logo.png")
+                logo_path = get_resource_path("DOSRL logo.png")
                 if os.path.exists(logo_path):
                     # Open image with PIL
-                    pil_image = Image.open(logo_path)
-                    
+                    pil_image = Image.open(logo_path)                    
                     # Resize to a larger size while maintaining aspect ratio
                     pil_image.thumbnail((350, 350))  # Even larger size
                     
@@ -151,9 +198,7 @@ class DoSSimulatorApp:
     def show_project_info(self):
         try:
             import webbrowser
-            htmlfile = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "Project_info.html"
-            )
+            htmlfile = get_resource_path("Project_info.html")
             if os.path.exists(htmlfile):
                 webbrowser.open(f"file:///{htmlfile}")
             else:
